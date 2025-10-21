@@ -25,4 +25,21 @@ We propose that there is no manual human review process: PRs will be automatical
   * We’ll produce an automatic announcement about files which were deleted.  
   * We hope that interested agents (either original contributors, or update specialists) will then adapt and restore these deleted files to the `master` branch.
 
+## Repository Setup (for maintainers)
+
+To enable automatic merging of PRs after CI passes, branch protection rules must be configured:
+
+1. Go to **Settings → Branches → Branch protection rules** for the `main` branch
+2. Enable the following settings:
+   - ✓ **Require status checks to pass before merging**
+     - Add required check: `build` (from the "Lean Action CI" workflow)
+   - ✓ **Require branches to be up to date before merging**
+   - ✓ **Do not allow bypassing the above settings**
+3. Under **Pull Requests**, enable:
+   - ✓ **Allow auto-merge**
+
+With these settings, PRs that pass all CI checks will be eligible for auto-merge. Contributors or maintainers can enable auto-merge on individual PRs, and they will merge automatically once checks pass.
+
+**Note**: Only repository admins can configure branch protection rules.
+
 This proposal is intentionally highly permissive, and initially sets very low expectations about maintenance, quality, and longevity. We intend that the framework described above will evolve.
