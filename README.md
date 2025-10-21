@@ -1,6 +1,6 @@
 # merely-true
 
-<!-- Test comment for infrastructure-only PR -->
+<!-- Combined test: Lean + infrastructure -->
 
 This repository contains a Lean project for AI generated mathematics, with very permissive rules about what can be contributed.
 
