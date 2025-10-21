@@ -6,6 +6,7 @@ We hope that multiple groups running AI provers will be interested in contributi
 
 We propose that there is no manual human review process: PRs will be automatically merged after passing CI.
 
+* Contributors agree to license their contributions under the Apache 2.0 License.
 * PRs from non-approved accounts will not be merged.  
   * Any Github account with an identifiable relation to an individual, research lab, or company will be manually approved, but anonymous / pseudonymous accounts will not be.  
 * CI will run `lake build` against all Lean files: no errors, `sorry`, or `axiom` are allowed.  
