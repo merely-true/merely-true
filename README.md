@@ -1,7 +1,5 @@
 # merely-true
 
-<!-- Combined test: Lean + infrastructure -->
-
 This repository contains a Lean project for AI generated mathematics, with very permissive rules about what can be contributed.
 
 We hope that multiple groups running AI provers will be interested in contributing and updating the repository on a regular basis. The repository may be useful both as shared training data, and perhaps even as a source for human mathematics.
