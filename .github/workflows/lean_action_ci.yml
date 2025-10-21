@@ -1,14 +1,122 @@
 name: Lean Action CI
 
 on:
-  push:
   pull_request:
   workflow_dispatch:
+
+permissions:
+  pull-requests: write
+  contents: read
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
-      - uses: leanprover/lean-action@v1
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check author is repository collaborator
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          AUTHOR="${{ github.event.pull_request.user.login }}"
+          REPO="${{ github.repository }}"
+
+          echo "Checking if $AUTHOR is a collaborator on $REPO..."
+
+          STATUS_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -H "Authorization: Bearer $GH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/$REPO/collaborators/$AUTHOR")
+
+          if [ "$STATUS_CODE" = "204" ]; then
+            echo "✓ $AUTHOR is an approved collaborator"
+          else
+            echo "✗ $AUTHOR is not a repository collaborator"
+            echo "Only approved accounts with identifiable owners can contribute."
+            exit 1
+          fi
+
+      - name: Check infrastructure modifications
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          AUTHOR="${{ github.event.pull_request.user.login }}"
+          REPO="${{ github.repository }}"
+          BASE="${{ github.event.pull_request.base.sha }}"
+          HEAD="${{ github.event.pull_request.head.sha }}"
+
+          # Get list of changed files
+          CHANGED_FILES=$(git diff --name-only $BASE...$HEAD)
+
+          # Check for infrastructure files
+          INFRA_FILES=$(echo "$CHANGED_FILES" | grep -E '^\.github/|^lakefile\.toml$|^lean-toolchain$|^\.gitignore$|^README\.md$' || true)
+
+          if [ -n "$INFRA_FILES" ]; then
+            echo "Infrastructure files modified:"
+            echo "$INFRA_FILES"
+            echo ""
+            echo "Checking if $AUTHOR has admin permissions..."
+
+            PERMISSION=$(curl -s \
+              -H "Authorization: Bearer $GH_TOKEN" \
+              -H "Accept: application/vnd.github+json" \
+              "https://api.github.com/repos/$REPO/collaborators/$AUTHOR/permission" \
+              | jq -r '.permission')
+
+            if [ "$PERMISSION" = "admin" ]; then
+              echo "✓ $AUTHOR has admin permissions"
+            else
+              echo "✗ $AUTHOR does not have admin permissions (has: $PERMISSION)"
+              echo "Only repository admins can modify CI or infrastructure files."
+              exit 1
+            fi
+          else
+            echo "✓ No infrastructure files modified"
+          fi
+
+      - name: Validate only Lean files are modified
+        run: |
+          BASE="${{ github.event.pull_request.base.sha }}"
+          HEAD="${{ github.event.pull_request.head.sha }}"
+
+          # Get all changed files
+          CHANGED_FILES=$(git diff --name-only $BASE...$HEAD)
+
+          # Filter out infrastructure files (already validated separately)
+          NON_INFRA_FILES=$(echo "$CHANGED_FILES" | grep -v -E '^\.github/|^lakefile\.toml$|^lean-toolchain$|^\.gitignore$|^README\.md$' || true)
+
+          if [ -z "$NON_INFRA_FILES" ]; then
+            echo "✓ Only infrastructure files modified"
+            exit 0
+          fi
+
+          # Check if any non-infrastructure files are not .lean files
+          NON_LEAN_FILES=$(echo "$NON_INFRA_FILES" | grep -v '\.lean$' || true)
+
+          if [ -n "$NON_LEAN_FILES" ]; then
+            echo "✗ PR contains non-Lean files:"
+            echo "$NON_LEAN_FILES"
+            echo ""
+            echo "Only .lean files are permitted in PRs (except infrastructure files by admins)."
+            exit 1
+          else
+            echo "✓ All non-infrastructure files are .lean files"
+          fi
+
+      # TODO: Add validation for 'sorry' and 'axiom' keywords
+      # Simple grep approach is insufficient - need proper detection, e.g. using lean-comparator?
+
+      - name: Build with Lean
+        uses: leanprover/lean-action@v1
+
+      - name: Enable auto-merge
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_NUMBER="${{ github.event.pull_request.number }}"
+          gh pr merge $PR_NUMBER --auto --squash --repo ${{ github.repository }}
