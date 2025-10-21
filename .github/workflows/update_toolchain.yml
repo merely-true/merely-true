@@ -1,0 +1,305 @@
+name: Update Toolchain
+
+on:
+  schedule:
+    # Run daily at 9:00 UTC
+    - cron: '0 9 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  check-and-update:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Get current toolchain
+        id: current
+        run: |
+          CURRENT=$(cat lean-toolchain | tr -d '\n')
+          echo "toolchain=$CURRENT" >> $GITHUB_OUTPUT
+          echo "Current toolchain: $CURRENT"
+
+      - name: Fetch Mathlib toolchain
+        id: mathlib
+        run: |
+          MATHLIB_TOOLCHAIN=$(curl -s https://raw.githubusercontent.com/leanprover-community/mathlib4/master/lean-toolchain | tr -d '\n')
+          echo "toolchain=$MATHLIB_TOOLCHAIN" >> $GITHUB_OUTPUT
+          echo "Mathlib toolchain: $MATHLIB_TOOLCHAIN"
+
+      - name: Compare toolchains
+        id: compare
+        run: |
+          CURRENT="${{ steps.current.outputs.toolchain }}"
+          MATHLIB="${{ steps.mathlib.outputs.toolchain }}"
+
+          if [ "$CURRENT" != "$MATHLIB" ]; then
+            echo "needs_update=true" >> $GITHUB_OUTPUT
+            echo "⚠️ Toolchain mismatch detected!"
+            echo "Current: $CURRENT"
+            echo "Mathlib: $MATHLIB"
+          else
+            echo "needs_update=false" >> $GITHUB_OUTPUT
+            echo "✓ Toolchains match"
+          fi
+
+      - name: Extract version numbers
+        if: steps.compare.outputs.needs_update == 'true'
+        id: versions
+        run: |
+          CURRENT="${{ steps.current.outputs.toolchain }}"
+          MATHLIB="${{ steps.mathlib.outputs.toolchain }}"
+
+          # Extract version from format "leanprover/lean4:v4.24.0"
+          CURRENT_VERSION=$(echo "$CURRENT" | sed 's/.*:v/v/')
+          MATHLIB_VERSION=$(echo "$MATHLIB" | sed 's/.*:v/v/')
+
+          echo "current=$CURRENT_VERSION" >> $GITHUB_OUTPUT
+          echo "mathlib=$MATHLIB_VERSION" >> $GITHUB_OUTPUT
+
+      - name: Configure git
+        if: steps.compare.outputs.needs_update == 'true'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      - name: Create update branch
+        if: steps.compare.outputs.needs_update == 'true'
+        run: |
+          BRANCH_NAME="toolchain-update-${{ steps.versions.outputs.mathlib }}"
+          # Delete branch if it already exists
+          git branch -D "$BRANCH_NAME" 2>/dev/null || true
+          git push origin --delete "$BRANCH_NAME" 2>/dev/null || true
+          git checkout -b "$BRANCH_NAME"
+          echo "branch=$BRANCH_NAME" >> $GITHUB_OUTPUT
+        id: branch
+
+      - name: Update lean-toolchain
+        if: steps.compare.outputs.needs_update == 'true'
+        run: |
+          MATHLIB_TOOLCHAIN="${{ steps.mathlib.outputs.toolchain }}"
+          echo "$MATHLIB_TOOLCHAIN" > lean-toolchain
+          echo "✓ Updated lean-toolchain to $MATHLIB_TOOLCHAIN"
+
+      - name: Install Lean
+        if: steps.compare.outputs.needs_update == 'true'
+        uses: leanprover/lean-action@v1
+        with:
+          build: false
+
+      - name: Update Mathlib dependency
+        if: steps.compare.outputs.needs_update == 'true'
+        run: |
+          lake update
+
+      - name: Create validation test files
+        if: steps.compare.outputs.needs_update == 'true'
+        run: |
+          mkdir -p MerelyTrue/ToolchainValidation
+          echo "def validDef : Nat := 42" > MerelyTrue/ToolchainValidation/ShouldSucceed.lean
+          echo "def broken : Nat := undefined_identifier_that_does_not_exist" > MerelyTrue/ToolchainValidation/ShouldFail.lean
+
+      - name: Build and identify failing files
+        if: steps.compare.outputs.needs_update == 'true'
+        id: build
+        continue-on-error: true
+        run: |
+          # Try to build all files
+          lake build 2>&1 | tee build.log
+
+      - name: Delete files that no longer compile
+        if: steps.compare.outputs.needs_update == 'true'
+        id: cleanup
+        run: |
+          # Extract .lean files from error lines
+          # Lean error format: "error: path/to/file.lean:line:col: message"
+          FAILING_FILES=$(grep '^error: ' build.log | \
+            grep -oE '[^[:space:]]+\.lean' | \
+            sort -u || echo "")
+
+          # Sanity check: verify our extraction logic is working
+          echo "Sanity check: validating error extraction..."
+
+          if ! echo "$FAILING_FILES" | grep -q "MerelyTrue/ToolchainValidation/ShouldFail\.lean"; then
+            echo "✗ SANITY CHECK FAILED: ShouldFail.lean not detected in errors"
+            echo "Error extraction may be broken. Aborting to prevent incorrect deletions."
+            exit 1
+          fi
+
+          if echo "$FAILING_FILES" | grep -q "MerelyTrue/ToolchainValidation/ShouldSucceed\.lean"; then
+            echo "✗ SANITY CHECK FAILED: ShouldSucceed.lean incorrectly detected as failing"
+            echo "Error extraction may be broken. Aborting to prevent incorrect deletions."
+            exit 1
+          fi
+
+          echo "✓ Sanity check passed"
+
+          # Remove test files from the list
+          FAILING_FILES=$(echo "$FAILING_FILES" | grep -v "^MerelyTrue/ToolchainValidation/")
+
+          # Clean up test files
+          rm -rf MerelyTrue/ToolchainValidation
+
+          # Validate files exist before deleting
+          VALIDATED_FILES=""
+          for file in $FAILING_FILES; do
+            if [ -f "$file" ]; then
+              VALIDATED_FILES="$VALIDATED_FILES $file"
+            fi
+          done
+
+          if [ -n "$VALIDATED_FILES" ]; then
+            echo "Files to delete:"
+            echo "$VALIDATED_FILES" | tr ' ' '\n'
+            echo "$VALIDATED_FILES" | tr ' ' '\n' > deleted_files.txt
+
+            # Delete the failing files
+            for file in $VALIDATED_FILES; do
+              rm -f "$file"
+              echo "Deleted: $file"
+            done
+
+            echo "has_deletions=true" >> $GITHUB_OUTPUT
+          else
+            echo "No files identified for deletion"
+            echo "has_deletions=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Verify build succeeds after cleanup
+        if: steps.compare.outputs.needs_update == 'true'
+        id: verify
+        continue-on-error: true
+        run: |
+          lake build
+
+      - name: Create announcement
+        if: steps.compare.outputs.needs_update == 'true' && steps.cleanup.outputs.has_deletions == 'true'
+        run: |
+          cat > DELETED_FILES.md <<'ANNOUNCEMENT_EOF'
+          # Files Deleted in Lean ${{ steps.versions.outputs.mathlib }} Update
+
+          The following files were deleted because they no longer compile with Lean ${{ steps.versions.outputs.mathlib }}:
+
+          ANNOUNCEMENT_EOF
+
+          cat deleted_files.txt | sed 's/^/- /' >> DELETED_FILES.md
+
+          cat >> DELETED_FILES.md <<'ANNOUNCEMENT_EOF'
+
+          ---
+
+          These files may be restored by:
+          - The original contributors updating them for the new Lean version
+          - Update specialists who want to help maintain the repository
+          - Anyone interested in contributing compatible versions
+
+          See the previous version at tag ${{ steps.versions.outputs.current }}.
+          ANNOUNCEMENT_EOF
+
+      - name: Commit changes
+        if: steps.compare.outputs.needs_update == 'true'
+        run: |
+          # Clean up temporary files
+          rm -f build.log deleted_files.txt
+
+          git add -A
+
+          COMMIT_MSG="Update to Lean ${{ steps.versions.outputs.mathlib }}
+
+          - Updated lean-toolchain to ${{ steps.mathlib.outputs.toolchain }}
+          - Updated Mathlib dependencies
+          - Deleted files that no longer compile
+
+          See DELETED_FILES.md for details on deleted files (if any)."
+
+          if [ "${{ steps.verify.outcome }}" != "success" ]; then
+            COMMIT_MSG="$COMMIT_MSG
+
+          ⚠️ WARNING: Build still failing after cleanup - manual intervention required."
+          fi
+
+          COMMIT_MSG="$COMMIT_MSG
+
+          🤖 Automated update by Update Toolchain workflow"
+
+          git commit -m "$COMMIT_MSG"
+
+      - name: Push branch
+        if: steps.compare.outputs.needs_update == 'true'
+        run: |
+          git push origin "${{ steps.branch.outputs.branch }}"
+
+      - name: Tag current version on main
+        if: steps.compare.outputs.needs_update == 'true'
+        run: |
+          # Tag the main branch with the old version before creating the PR
+          CURRENT_VERSION="${{ steps.versions.outputs.current }}"
+          git checkout main
+
+          # Only create tag if it doesn't exist
+          if git rev-parse "$CURRENT_VERSION" >/dev/null 2>&1; then
+            echo "✓ Tag $CURRENT_VERSION already exists"
+          else
+            git tag "$CURRENT_VERSION"
+            git push origin "$CURRENT_VERSION"
+            echo "✓ Tagged main branch as $CURRENT_VERSION"
+          fi
+
+      - name: Create Pull Request
+        if: steps.compare.outputs.needs_update == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Check if PR already exists
+          EXISTING_PR=$(gh pr list --head "${{ steps.branch.outputs.branch }}" --json number --jq '.[0].number' || true)
+
+          if [ -n "$EXISTING_PR" ]; then
+            echo "✓ PR #$EXISTING_PR already exists for this update"
+            exit 0
+          fi
+
+          BODY="## Automated Toolchain Update
+
+          This PR updates the repository to Lean ${{ steps.versions.outputs.mathlib }}, following the process described in README.md.
+
+          **Previous version:** ${{ steps.versions.outputs.current }}
+          **New version:** ${{ steps.versions.outputs.mathlib }}
+
+          ### Changes Made
+
+          1. ✓ Tagged the \`main\` branch as \`${{ steps.versions.outputs.current }}\`
+          2. ✓ Updated \`lean-toolchain\` to \`${{ steps.mathlib.outputs.toolchain }}\`
+          3. ✓ Updated Mathlib dependencies via \`lake update\`
+          4. ✓ Ran \`lake build\` and deleted files that no longer compile
+          5. $(if [ "${{ steps.verify.outcome }}" = "success" ]; then
+            echo "✓ Verified build succeeds after cleanup"
+          else
+            echo "⚠️ Build still failing - manual intervention required"
+          fi)
+
+          $(if [ "${{ steps.cleanup.outputs.has_deletions }}" = "true" ]; then
+            echo "### Deleted Files"
+            echo ""
+            echo "See \`DELETED_FILES.md\` for the list of deleted files and information about restoring them."
+          else
+            echo "### No Files Deleted"
+            echo ""
+            echo "All existing files compile successfully with the new toolchain."
+          fi)
+
+          ---
+
+          🤖 This PR was automatically created by the [Update Toolchain workflow](https://github.com/${{ github.repository }}/actions/workflows/update_toolchain.yml) and requires manual merge by a maintainer."
+
+          gh pr create \
+            --title "Update to Lean ${{ steps.versions.outputs.mathlib }}" \
+            --body "$BODY" \
+            --head "${{ steps.branch.outputs.branch }}" \
+            --base main

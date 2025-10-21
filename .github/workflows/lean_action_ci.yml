@@ -17,7 +17,19 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Check if automated update bot
+        id: is_bot
+        run: |
+          AUTHOR="${{ github.event.pull_request.user.login }}"
+          if [ "$AUTHOR" = "github-actions[bot]" ]; then
+            echo "is_bot=true" >> $GITHUB_OUTPUT
+            echo "✓ PR from automated update bot - skipping validation, will require manual merge"
+          else
+            echo "is_bot=false" >> $GITHUB_OUTPUT
+          fi
+
       - name: Check author is repository collaborator
+        if: steps.is_bot.outputs.is_bot != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -40,6 +52,7 @@ jobs:
           fi
 
       - name: Check infrastructure modifications
+        if: steps.is_bot.outputs.is_bot != 'true'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -78,6 +91,7 @@ jobs:
           fi
 
       - name: Validate only Lean files are modified
+        if: steps.is_bot.outputs.is_bot != 'true'
         id: check_lean_files
         run: |
           BASE="${{ github.event.pull_request.base.sha }}"
@@ -113,5 +127,5 @@ jobs:
       # Simple grep approach is insufficient - need proper detection, e.g. using lean-comparator?
 
       - name: Build with Lean
-        if: steps.check_lean_files.outputs.has_lean_files == 'true'
+        if: steps.is_bot.outputs.is_bot == 'true' || steps.check_lean_files.outputs.has_lean_files == 'true'
         uses: leanprover/lean-action@v1
