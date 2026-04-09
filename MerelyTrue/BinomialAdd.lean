@@ -174,3 +174,24 @@ lemma PMF.binomial_add_binomial (p : NNReal) (hp : p ≤ 1) (m₁ m₂ : ℕ) :
         omega
       simp [inner_zero]
     rw [lhs_zero, rhs_zero]
+
+/-- The sum of two independent binomial random variables is commutative:
+    Binomial(p, m₁) + Binomial(p, m₂) has the same distribution as
+    Binomial(p, m₂) + Binomial(p, m₁). -/
+lemma PMF.binomial_add_binomial_comm (p : NNReal) (hp : p ≤ 1) (m₁ m₂ : ℕ) :
+    (do
+      let k ← PMF.binomial p hp m₁
+      let l ← PMF.binomial p hp m₂
+      return (k + l : ℕ))
+    =
+    (do
+      let k ← PMF.binomial p hp m₂
+      let l ← PMF.binomial p hp m₁
+      return (k + l : ℕ)) :=
+  calc (do let k ← PMF.binomial p hp m₁; let l ← PMF.binomial p hp m₂; return (k + l : ℕ))
+      = (do let k ← PMF.binomial p hp (m₁ + m₂); return (k : ℕ)) :=
+          (PMF.binomial_add_binomial p hp m₁ m₂).symm
+    _ = (do let k ← PMF.binomial p hp (m₂ + m₁); return (k : ℕ)) := by
+          rw [add_comm m₁ m₂]
+    _ = (do let k ← PMF.binomial p hp m₂; let l ← PMF.binomial p hp m₁; return (k + l : ℕ)) :=
+          PMF.binomial_add_binomial p hp m₂ m₁
