@@ -129,3 +129,19 @@ jobs:
       - name: Build with Lean
         if: steps.is_bot.outputs.is_bot == 'true' || steps.check_lean_files.outputs.has_lean_files == 'true'
         uses: leanprover/lean-action@v1
+
+      - name: Run declaration linter
+        if: steps.is_bot.outputs.is_bot == 'true' || steps.check_lean_files.outputs.has_lean_files == 'true'
+        run: lake exe runLinter MerelyTrue
+
+  lint_style:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Run lint-style
+        uses: leanprover-community/lint-style-action@main
+        with:
+          mode: check
