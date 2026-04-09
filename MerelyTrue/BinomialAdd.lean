@@ -35,11 +35,13 @@ lemma PMF.binomial_add_binomial (p : NNReal) (hp : p ≤ 1) (m₁ m₂ : ℕ) :
           ext
           exact heq.symm
         simp only [hne', ↓reduceIte]
-      · intro h; exact (h (Finset.mem_univ _)).elim
+      · intro h
+        exact (h (Finset.mem_univ _)).elim
     rw [lhs_eq]
     simp only [PMF.binomial_apply, Fin.val_last]
     conv_rhs =>
-      arg 2; ext x
+      arg 2
+      ext x
       rw [show (∑ x_1 : Fin (m₂ + 1), if n = ↑x + ↑x_1 then
             (p : ENNReal) ^ ↑x_1 * (1 - (p : ENNReal)) ^ (m₂ - ↑x_1) * ↑(m₂.choose ↑x_1) else 0) =
           if (x : ℕ) ≤ n ∧ n - (x : ℕ) ≤ m₂ then
@@ -51,14 +53,19 @@ lemma PMF.binomial_add_binomial (p : NNReal) (hp : p ≤ 1) (m₁ m₂ : ℕ) :
           · simp only [add_tsub_cancel_of_le hxn, ↓reduceIte]
           · intro b _ hne
             have hne' : n ≠ ↑x + ↑b := by
-              intro heq; apply hne; ext
+              intro heq
+              apply hne
+              ext
               have : n - (x : ℕ) = (b : ℕ) := by omega
               simp only [this]
             simp only [hne', ↓reduceIte]
-          · intro h; exact (h (Finset.mem_univ _)).elim
+          · intro h
+            exact (h (Finset.mem_univ _)).elim
         · push_neg at hcond
-          apply Finset.sum_eq_zero; intro y _
-          simp only [ite_eq_right_iff]; intro heq
+          apply Finset.sum_eq_zero
+          intro y _
+          simp only [ite_eq_right_iff]
+          intro heq
           specialize hcond (by omega : (x : ℕ) ≤ n)
           have hy : (y : ℕ) ≤ m₂ := Fin.is_le y
           omega
@@ -97,7 +104,8 @@ lemma PMF.binomial_add_binomial (p : NNReal) (hp : p ≤ 1) (m₁ m₂ : ℕ) :
       obtain ⟨_, hxn, hnxm₂⟩ := hx
       simp only
       constructor
-      · rw [mem_antidiagonal]; omega
+      · rw [mem_antidiagonal]
+        omega
       · exact ⟨Fin.is_le x, hnxm₂⟩
     case hj =>
       intro ⟨i, j⟩ hij
@@ -112,7 +120,8 @@ lemma PMF.binomial_add_binomial (p : NNReal) (hp : p ≤ 1) (m₁ m₂ : ℕ) :
         · omega
     case left_inv =>
       intro x hx
-      ext; simp
+      ext
+      simp
     case right_inv =>
       intro ⟨i, j⟩ hij
       rw [Finset.mem_filter] at hij
@@ -125,10 +134,14 @@ lemma PMF.binomial_add_binomial (p : NNReal) (hp : p ≤ 1) (m₁ m₂ : ℕ) :
       obtain ⟨_, hxn, hnxm₂⟩ := hx
       simp only [Nat.cast_mul]
       have pow_p : (p : ENNReal) ^ (x : ℕ) * (p : ENNReal) ^ (n - (x : ℕ)) = (p : ENNReal) ^ n := by
-        rw [← pow_add]; congr 1; omega
+        rw [← pow_add]
+        congr 1
+        omega
       have pow_q : (1 - (p : ENNReal)) ^ (m₁ - (x : ℕ)) * (1 - (p : ENNReal)) ^ (m₂ - (n - (x : ℕ))) =
           (1 - (p : ENNReal)) ^ (m₁ + m₂ - n) := by
-        rw [← pow_add]; congr 1; omega
+        rw [← pow_add]
+        congr 1
+        omega
       ring_nf
       calc (p : ENNReal) ^ (x : ℕ) * (p : ENNReal) ^ (n - (x : ℕ)) *
            (1 - (p : ENNReal)) ^ (m₁ - (x : ℕ)) * (1 - (p : ENNReal)) ^ (m₂ - (n - (x : ℕ))) *
@@ -140,13 +153,21 @@ lemma PMF.binomial_add_binomial (p : NNReal) (hp : p ≤ 1) (m₁ m₂ : ℕ) :
             ↑(m₁.choose (x : ℕ)) * ↑(m₂.choose (n - (x : ℕ))) := by rw [pow_q]
   · push_neg at hn
     have lhs_zero : (∑ x : Fin (m₁ + m₂ + 1), if n = ↑x then (binomial p hp (m₁ + m₂)) x else 0) = 0 := by
-      apply Finset.sum_eq_zero; intro x _; simp only [ite_eq_right_iff]
-      intro h; exfalso; have : (x : ℕ) ≤ m₁ + m₂ := Fin.is_le x; omega
+      apply Finset.sum_eq_zero
+      intro x _
+      simp only [ite_eq_right_iff]
+      intro h
+      exfalso
+      have : (x : ℕ) ≤ m₁ + m₂ := Fin.is_le x
+      omega
     have rhs_zero : (∑ x : Fin (m₁ + 1), (binomial p hp m₁) x *
         ∑ x_1 : Fin (m₂ + 1), if n = ↑x + ↑x_1 then (binomial p hp m₂) x_1 else 0) = 0 := by
-      apply Finset.sum_eq_zero; intro x _
+      apply Finset.sum_eq_zero
+      intro x _
       have inner_zero : (∑ x_1 : Fin (m₂ + 1), if n = ↑x + ↑x_1 then (binomial p hp m₂) x_1 else 0) = 0 := by
-        apply Finset.sum_eq_zero; intro y _; simp only [ite_eq_right_iff]
+        apply Finset.sum_eq_zero
+        intro y _
+        simp only [ite_eq_right_iff]
         intro h
         have hx : (x : ℕ) ≤ m₁ := Fin.is_le x
         have hy : (y : ℕ) ≤ m₂ := Fin.is_le y
