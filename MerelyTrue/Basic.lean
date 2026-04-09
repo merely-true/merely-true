@@ -1,0 +1,2 @@
+-- This file is intentionally minimal.
+-- It exists so that the `MerelyTrue.+` glob in lakefile.toml has at least one match.
