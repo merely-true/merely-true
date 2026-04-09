@@ -123,6 +123,41 @@ jobs:
             echo "has_lean_files=true" >> $GITHUB_OUTPUT
           fi
 
+      - name: Check project descriptions
+        run: |
+          FAIL=0
+          # Find all directories directly under MerelyTrue/
+          if [ -d "MerelyTrue" ]; then
+            for dir in MerelyTrue/*/; do
+              # Skip if the glob didn't match anything
+              [ -d "$dir" ] || continue
+              # Extract directory name (e.g., "Landau" from "MerelyTrue/Landau/")
+              DIRNAME=$(basename "$dir")
+              ENTRY_FILE="MerelyTrue/${DIRNAME}.lean"
+              if [ ! -f "$ENTRY_FILE" ]; then
+                echo "✗ Missing entry module: $ENTRY_FILE"
+                echo "  Every project directory under MerelyTrue/ must have a corresponding"
+                echo "  entry module (e.g., MerelyTrue/Foo.lean for MerelyTrue/Foo/)."
+                FAIL=1
+              elif ! grep -q '/\-!' "$ENTRY_FILE"; then
+                echo "✗ Missing module docstring in $ENTRY_FILE"
+                echo "  Entry modules must contain a /-! ... -/ module docstring describing the project."
+                echo "  See teorth/analysis for the expected pattern."
+                FAIL=1
+              else
+                echo "✓ $ENTRY_FILE has a project description"
+              fi
+            done
+          else
+            echo "✓ No MerelyTrue/ directory yet — nothing to check"
+          fi
+          if [ "$FAIL" -ne 0 ]; then
+            echo ""
+            echo "Every directory under MerelyTrue/ must have a .lean entry module with a"
+            echo "/-! ... -/ module docstring. This follows the teorth/analysis pattern."
+            exit 1
+          fi
+
       # TODO: Add validation for 'sorry' and 'axiom' keywords
       # Simple grep approach is insufficient - need proper detection, e.g. using lean-comparator?
 
