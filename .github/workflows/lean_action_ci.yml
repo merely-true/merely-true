@@ -132,6 +132,10 @@ jobs:
           build-args: "--wfail"
           lean4checker: true
 
+      - name: Run declaration linter
+        if: steps.is_bot.outputs.is_bot == 'true' || steps.check_lean_files.outputs.has_lean_files == 'true'
+        run: lake exe runLinter MerelyTrue
+
       - name: Enforce infrastructure modification policy
         if: always() && steps.is_bot.outputs.is_bot != 'true' && steps.check_infra.outcome == 'failure'
         run: |
