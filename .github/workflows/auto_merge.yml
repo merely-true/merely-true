@@ -22,7 +22,7 @@ jobs:
               --paginate \
               repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files \
               --jq '.[] | .filename' \
-              | grep -E '^\.github/|^lakefile\.toml$|^lean-toolchain$|^\.gitignore$|^README\.md$' || true
+              | grep -E '^\.github/|^lakefile\.toml$|^lake-manifest\.json$|^lean-toolchain$|^\.gitignore$|^README\.md$' || true
           )
           if [ -n "$INFRA_FILES" ]; then
             echo "Infrastructure files modified — skipping auto-merge:"
