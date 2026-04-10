@@ -123,9 +123,9 @@ jobs:
             echo "has_lean_files=true" >> $GITHUB_OUTPUT
           fi
 
-      # TODO: Add validation for 'sorry' and 'axiom' keywords
-      # Simple grep approach is insufficient - need proper detection, e.g. using lean-comparator?
-
       - name: Build with Lean
         if: steps.is_bot.outputs.is_bot == 'true' || steps.check_lean_files.outputs.has_lean_files == 'true'
         uses: leanprover/lean-action@v1
+        with:
+          build-args: "--wfail"
+          lean4checker: true
