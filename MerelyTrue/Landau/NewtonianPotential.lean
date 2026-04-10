@@ -82,6 +82,7 @@ lemma coulomb_landauMatrix_entry_le_pi (z : Fin 3 → ℝ) (i j : Fin 3)
   exact le_trans h (inv_anti₀ (norm_pos_iff.mpr hz) (pi_norm_le_eucNorm z))
 
 
+set_option linter.unusedVariables false in
 lemma inv_norm_summable_series (R : ℝ) (hR : 0 < R) :
     Summable (fun k : ℕ => (2^(-k-1 : ℝ) * R)⁻¹ * (2^(-k : ℝ) * R)^3) := by
   norm_num [ Real.rpow_sub ]
