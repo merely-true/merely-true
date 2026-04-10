@@ -9,3 +9,4 @@ rev = "v4.24.0"
 [[lean_lib]]
 name = "MerelyTrue"
 globs = ["MerelyTrue.+"]
+weakLeanArgs = ["-Dlinter.mathlibStandardSet=true"]
