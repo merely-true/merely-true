@@ -199,7 +199,7 @@ lemma fubini_double_integrable_coulomb
       hf_smooth.continuous).aestronglyMeasurable v
   -- Cg ≥ 0
   have hCg_nn : 0 ≤ Cg := by
-    by_contra h_neg; push_neg at h_neg
+    by_contra h_neg; push Not at h_neg
     have : Cg * (1 + ‖(0 : Fin 3 → ℝ)‖) ^ Kg * f 0 < 0 :=
       mul_neg_of_neg_of_pos (mul_neg_of_neg_of_pos h_neg (by positivity)) (hf_pos 0)
     linarith [hGrad 0 0, abs_nonneg (fderiv ℝ f 0 (Pi.single 0 1))]
@@ -366,7 +366,7 @@ lemma fubini_double_integrable_coulomb
                 (hM₁b v) hint_nn
                 (mul_nonneg (mul_nonneg hCg_nn hv_nn) hfv)
               -- h1 : |vGrad f v j| * ∫ ≤ Cg*...*M₁
-              exact add_le_add_right h1 _
+              exact add_le_add_left h1 _
             -- Sum the bounds
             have hfin_bound :
               ∑ j : Fin 3,
@@ -418,7 +418,7 @@ lemma fubini_double_integrable_coulomb
                         |vGrad f w j|) := hRHS_eq
                 _ ≤ 3 * (Cg * (1 + ‖v‖) ^ Kg * f v * M₁) +
                     f v * (Md₀ + Md₁ + Md₂) :=
-                  add_le_add_left
+                  add_le_add_right
                     (mul_le_mul_of_nonneg_left hMd_sum hfv) _
             -- Multiply by 3*Cg*(1+‖v‖)^Kg
             have h3_nn : (0 : ℝ) ≤ 3 * Cg * (1 + ‖v‖) ^ Kg :=

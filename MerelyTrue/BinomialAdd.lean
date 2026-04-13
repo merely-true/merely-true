@@ -70,12 +70,12 @@ noncomputable def bernoulliNat (p : ℝ≥0) (hp : p ≤ 1) : PMF ℕ :=
 @[simp]
 theorem bernoulliNat_apply_zero (p : ℝ≥0) (hp : p ≤ 1) :
     bernoulliNat p hp 0 = 1 - p := by
-  simp [bernoulliNat, PMF.map_apply, tsum_bool, PMF.bernoulli_apply]
+  simp [bernoulliNat, PMF.map_apply, PMF.bernoulli_apply]
 
 @[simp]
 theorem bernoulliNat_apply_one (p : ℝ≥0) (hp : p ≤ 1) :
     bernoulliNat p hp 1 = p := by
-  simp [bernoulliNat, PMF.map_apply, tsum_bool, PMF.bernoulli_apply]
+  simp [bernoulliNat, PMF.map_apply, PMF.bernoulli_apply]
 
 @[simp]
 theorem bernoulliNat_apply_of_gt_one (p : ℝ≥0) (hp : p ≤ 1) (n : ℕ) (hn : 1 < n) :

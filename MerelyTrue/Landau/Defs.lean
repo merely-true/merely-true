@@ -215,7 +215,8 @@ lemma velocity_ibp
       ∫ v, F v i * fderiv ℝ g v (Pi.single i 1) =
       -(∫ v, fderiv ℝ (fun w => F w i) v (Pi.single i 1) * g v) :=
     fun i => integral_mul_fderiv_eq_neg_fderiv_mul_of_integrable
-      (h_int_df_g i) (h_int_f_dg i) (h_int_fg i) (hF_diff i) hg_diff
+      (h_int_df_g i) (h_int_f_dg i) (h_int_fg i)
+      (fun x _ => (hF_diff i).differentiableAt) (fun x _ => hg_diff.differentiableAt)
   -- Both sides equal Finset.sum over per-component integrals
   have lhs_eq : (fun v => vDiv F v * g v) = fun v =>
       ∑ i : Fin 3, fderiv ℝ (fun w => F w i) v (Pi.single i 1) * g v := by

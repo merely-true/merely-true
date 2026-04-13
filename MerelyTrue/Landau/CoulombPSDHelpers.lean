@@ -65,11 +65,11 @@ lemma tendsto_landau_quadratic_diag
               u ∈ U → v ∈ U → eucNorm (G u - G v) ≤ L * eucNorm (u - v) := by
           obtain ⟨U, hU⟩ : ∃ U : Set (Fin 3 → ℝ), IsOpen U ∧ x ∈ U ∧
               ∃ L : ℝ, ∀ u ∈ U, ∀ v ∈ U, ‖G u - G v‖ ≤ L * ‖u - v‖ := by
-            have hG_diff := hG.differentiable le_rfl
+            have hG_diff := hG.differentiable one_ne_zero
             obtain ⟨K, hK⟩ : ∃ K : ℝ, ∀ u ∈ Metric.closedBall x 1, ‖fderiv ℝ G u‖ ≤ K := by
               exact IsCompact.exists_bound_of_continuousOn
                 (ProperSpace.isCompact_closedBall x 1)
-                (hG.continuous_fderiv le_rfl |> Continuous.continuousOn)
+                (hG.continuous_fderiv one_ne_zero |> Continuous.continuousOn)
             refine ⟨ Metric.ball x 1, Metric.isOpen_ball, Metric.mem_ball_self one_pos, K,
               fun u hu v hv => ?_ ⟩
             exact (convex_ball x 1).norm_image_sub_le_of_norm_fderiv_le
@@ -414,11 +414,15 @@ lemma fubini_double_aestronglyMeasurable
         apply Continuous.measurable
         apply Continuous.sub
         · by_cases h : i = j
-          · simp only [h, ↓reduceIte, normSq, dotProduct, mul_one]
-            exact continuous_finset_sum _ fun k _ =>
-              ((continuous_apply k).comp (continuous_fst.sub continuous_snd)).mul
-              ((continuous_apply k).comp (continuous_fst.sub continuous_snd))
-          · simp [h]; exact continuous_const
+          · simp only [h, ↓reduceIte, normSq, dotProduct]
+            have : Continuous fun p : (Fin 3 → ℝ) × (Fin 3 → ℝ) =>
+                (∑ k : Fin 3, (p.1 - p.2) k * (p.1 - p.2) k) * 1 := by
+              refine (continuous_finset_sum Finset.univ fun k _ => ?_).mul continuous_const
+              exact ((continuous_apply k).comp (continuous_fst.sub continuous_snd)).mul
+                ((continuous_apply k).comp (continuous_fst.sub continuous_snd))
+            convert this using 1
+          · simp only [h, ↓reduceIte]
+            exact (continuous_const (y := (0:ℝ))).congr fun _ => (mul_zero _).symm
         · exact ((continuous_apply i).comp (continuous_fst.sub continuous_snd)).mul
                 ((continuous_apply j).comp (continuous_fst.sub continuous_snd))
     · -- flux component: continuous hence measurable

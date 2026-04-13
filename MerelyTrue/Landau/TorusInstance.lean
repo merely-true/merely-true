@@ -27,7 +27,7 @@ private theorem second_deriv_nonpos_at_local_max' {f : ℝ → ℝ} {x₀ : ℝ}
     (hf'' : DifferentiableAt ℝ (deriv f) x₀) :
     deriv (deriv f) x₀ ≤ 0 := by
   have h_first_deriv_zero : deriv f x₀ = 0 := IsLocalMax.deriv_eq_zero hmax
-  by_contra h_contra; push_neg at h_contra
+  by_contra h_contra; push Not at h_contra
   obtain ⟨ε, hε⟩ : ∃ ε > 0, ∀ x ∈ Set.Ioo x₀ (x₀ + ε), deriv f x > 0 := by
     have := Metric.tendsto_nhds_nhds.1 (hf''.hasDerivAt.isLittleO.tendsto_div_nhds_zero)
     obtain ⟨δ, δ_pos, H⟩ := this _ h_contra
@@ -81,7 +81,7 @@ private theorem killing_harmonic_rn' {n : ℕ} (b : (Fin n → ℝ) → (Fin n �
       apply ContDiff.clm_apply
       · exact (hb i).fderiv_right le_rfl
       · exact contDiff_const
-    exact this.differentiable le_rfl
+    exact this.differentiable one_ne_zero
   have hfun_neg : (fun y => -(fderiv ℝ (fun z => b z i) y (Pi.single j 1))) =
       -(fun y => fderiv ℝ (fun z => b z i) y (Pi.single j 1)) := by ext; simp
   rw [hfun_neg, fderiv_neg]
@@ -114,7 +114,7 @@ private theorem curl_div_harmonic_rn' {n : ℕ} (F : (Fin n → ℝ) → (Fin n 
     intro i
     have : ContDiff ℝ 1 (fun y => fderiv ℝ (fun z => F z i) y (Pi.single i 1)) :=
       ContDiff.clm_apply ((hF i).fderiv_right le_rfl) contDiff_const
-    exact (this.differentiable le_rfl).differentiableAt
+    exact (this.differentiable one_ne_zero).differentiableAt
   have : ∑ i : Fin n,
         fderiv ℝ (fun y => fderiv ℝ (fun z => F z i) y (Pi.single i 1)) x (Pi.single j 1) =
       (∑ i : Fin n,
@@ -168,7 +168,7 @@ theorem torus_hLaplacianMaxNonpos (φ : Torus3 → ℝ) (x₀ : Torus3)
         simp only [id, one_smul] at h; exact h
       simpa using hsmul.const_add x₀'
     -- gᵢ is differentiable everywhere (since periodicLift φ is C¹)
-    have hd_diff : Differentiable ℝ (periodicLift φ) := hd.differentiable le_rfl
+    have hd_diff : Differentiable ℝ (periodicLift φ) := hd.differentiable one_ne_zero
     have hgi_diff : ∀ t, DifferentiableAt ℝ gᵢ t := fun t =>
       hd_diff.differentiableAt.comp t (hpath_hd t).differentiableAt
     -- deriv gᵢ = hᵢ ∘ (x₀' + · • eᵢ)
@@ -215,7 +215,7 @@ private lemma contDiff2_from_partials {g : (Fin 3 → ℝ) → ℝ}
     (hg_parts : ∀ i : Fin 3, ContDiff ℝ 1 (fun y => fderiv ℝ g y (Pi.single i 1))) :
     ContDiff ℝ 2 g := by
   rw [show (2 : WithTop ℕ∞) = 1 + 1 from rfl, contDiff_succ_iff_fderiv]
-  refine ⟨hg1.differentiable le_rfl, fun h => by simp at h, ?_⟩
+  refine ⟨hg1.differentiable one_ne_zero, fun h => by simp at h, ?_⟩
   rw [contDiff_clm_apply_iff]
   intro v
   have heq : (fun y => fderiv ℝ g y v) =

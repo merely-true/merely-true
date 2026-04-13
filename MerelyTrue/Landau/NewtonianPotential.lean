@@ -1,4 +1,5 @@
 import MerelyTrue.Landau.CoulombKernel
+import Mathlib.Analysis.SpecialFunctions.Log.Base
 
 /-!
 # Newtonian Potential Bounds and Inverse-Norm Integrability
@@ -326,7 +327,7 @@ lemma convolution_local_int_schwartz
         have hw_far : 1 ≤ ‖v - w‖ := by
           rw [Set.mem_diff] at hw
           by_contra h_lt
-          push_neg at h_lt
+          push Not at h_lt
           exact hw.2 (Metric.mem_closedBall.mpr (by rw [dist_comm, dist_eq_norm]; linarith))
         calc ‖v - w‖⁻¹ * |g w| ≤ 1 * |g w| :=
               mul_le_mul_of_nonneg_right (inv_le_one_of_one_le₀ hw_far) (abs_nonneg _)
