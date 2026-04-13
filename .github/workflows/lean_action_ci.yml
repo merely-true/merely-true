@@ -138,3 +138,13 @@ jobs:
           echo "Infrastructure modification check failed earlier."
           echo "Only repository admins can modify CI or infrastructure files."
           exit 1
+
+  lint_style:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Run lint-style
+        uses: leanprover-community/lint-style-action@main
+        with:
+          mode: check
