@@ -51,46 +51,10 @@ jobs:
             exit 1
           fi
 
-      - name: Check infrastructure modifications
-        if: steps.is_bot.outputs.is_bot != 'true'
-        id: check_infra
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          AUTHOR="${{ github.event.pull_request.user.login }}"
-          REPO="${{ github.repository }}"
-          BASE="${{ github.event.pull_request.base.sha }}"
-          HEAD="${{ github.event.pull_request.head.sha }}"
-
-          # Get list of changed files
-          CHANGED_FILES=$(git diff --name-only $BASE...$HEAD)
-
-          # Check for infrastructure files
-          INFRA_FILES=$(echo "$CHANGED_FILES" | grep -E '^\.github/|^lakefile\.toml$|^lake-manifest\.json$|^lean-toolchain$|^\.gitignore$|^README\.md$' || true)
-
-          if [ -n "$INFRA_FILES" ]; then
-            echo "Infrastructure files modified:"
-            echo "$INFRA_FILES"
-            echo ""
-            echo "Checking if $AUTHOR has admin permissions..."
-
-            PERMISSION=$(curl -s \
-              -H "Authorization: Bearer $GH_TOKEN" \
-              -H "Accept: application/vnd.github+json" \
-              "https://api.github.com/repos/$REPO/collaborators/$AUTHOR/permission" \
-              | jq -r '.permission')
-
-            if [ "$PERMISSION" = "admin" ]; then
-              echo "✓ $AUTHOR has admin permissions"
-            else
-              echo "✗ $AUTHOR does not have admin permissions (has: $PERMISSION)"
-              echo "Only repository admins can modify CI or infrastructure files."
-              exit 1
-            fi
-          else
-            echo "✓ No infrastructure files modified"
-          fi
+      # The infrastructure-file admin gate lives in infra_gate.yml
+      # (pull_request_target) because the pull_request token for fork PRs is
+      # read-only, which makes /collaborators/{user}/permission return clamped
+      # data and falsely reject admins.
 
       - name: Validate only Lean files are modified
         if: steps.is_bot.outputs.is_bot != 'true'
@@ -131,10 +95,3 @@ jobs:
         with:
           build-args: "--wfail"
           lean4checker: true
-
-      - name: Enforce infrastructure modification policy
-        if: always() && steps.is_bot.outputs.is_bot != 'true' && steps.check_infra.outcome == 'failure'
-        run: |
-          echo "Infrastructure modification check failed earlier."
-          echo "Only repository admins can modify CI or infrastructure files."
-          exit 1
