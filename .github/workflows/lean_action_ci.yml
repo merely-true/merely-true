@@ -53,6 +53,8 @@ jobs:
 
       - name: Check infrastructure modifications
         if: steps.is_bot.outputs.is_bot != 'true'
+        id: check_infra
+        continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -65,7 +67,7 @@ jobs:
           CHANGED_FILES=$(git diff --name-only $BASE...$HEAD)
 
           # Check for infrastructure files
-          INFRA_FILES=$(echo "$CHANGED_FILES" | grep -E '^\.github/|^lakefile\.toml$|^lean-toolchain$|^\.gitignore$|^README\.md$' || true)
+          INFRA_FILES=$(echo "$CHANGED_FILES" | grep -E '^\.github/|^lakefile\.toml$|^lake-manifest\.json$|^lean-toolchain$|^\.gitignore$|^README\.md$' || true)
 
           if [ -n "$INFRA_FILES" ]; then
             echo "Infrastructure files modified:"
@@ -101,7 +103,7 @@ jobs:
           CHANGED_FILES=$(git diff --name-only $BASE...$HEAD)
 
           # Filter out infrastructure files (already validated separately)
-          NON_INFRA_FILES=$(echo "$CHANGED_FILES" | grep -v -E '^\.github/|^lakefile\.toml$|^lean-toolchain$|^\.gitignore$|^README\.md$' || true)
+          NON_INFRA_FILES=$(echo "$CHANGED_FILES" | grep -v -E '^\.github/|^lakefile\.toml$|^lake-manifest\.json$|^lean-toolchain$|^\.gitignore$|^README\.md$' || true)
 
           if [ -z "$NON_INFRA_FILES" ]; then
             echo "✓ Only infrastructure files modified"
@@ -123,9 +125,16 @@ jobs:
             echo "has_lean_files=true" >> $GITHUB_OUTPUT
           fi
 
-      # TODO: Add validation for 'sorry' and 'axiom' keywords
-      # Simple grep approach is insufficient - need proper detection, e.g. using lean-comparator?
-
       - name: Build with Lean
         if: steps.is_bot.outputs.is_bot == 'true' || steps.check_lean_files.outputs.has_lean_files == 'true'
         uses: leanprover/lean-action@v1
+        with:
+          build-args: "--wfail"
+          lean4checker: true
+
+      - name: Enforce infrastructure modification policy
+        if: always() && steps.is_bot.outputs.is_bot != 'true' && steps.check_infra.outcome == 'failure'
+        run: |
+          echo "Infrastructure modification check failed earlier."
+          echo "Only repository admins can modify CI or infrastructure files."
+          exit 1

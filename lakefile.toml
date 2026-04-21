@@ -1,4 +1,4 @@
-name = "merely-true"
+name = "MerelyTrue"
 defaultTargets = ["MerelyTrue"]
 
 [[require]]
@@ -9,4 +9,3 @@ rev = "v4.24.0"
 [[lean_lib]]
 name = "MerelyTrue"
 globs = ["MerelyTrue.+"]
-

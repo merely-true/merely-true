@@ -1,7 +1,7 @@
 name: Auto-merge
 
 on:
-  pull_request:
+  pull_request_target:
     types: [opened, synchronize, reopened]
 
 permissions:
@@ -12,17 +12,18 @@ jobs:
   auto-merge:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
       - name: Check for infrastructure changes
         id: check_infra
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
-          BASE="${{ github.event.pull_request.base.sha }}"
-          HEAD="${{ github.event.pull_request.head.sha }}"
-          INFRA_FILES=$(git diff --name-only "$BASE"..."$HEAD" | grep -E '^\.github/|^lakefile\.toml$|^lean-toolchain$|^\.gitignore$|^README\.md$' || true)
+          INFRA_FILES=$(
+            gh api \
+              --paginate \
+              repos/${{ github.repository }}/pulls/${{ github.event.pull_request.number }}/files \
+              --jq '.[] | .filename' \
+              | grep -E '^\.github/|^lakefile\.toml$|^lake-manifest\.json$|^lean-toolchain$|^\.gitignore$|^README\.md$' || true
+          )
           if [ -n "$INFRA_FILES" ]; then
             echo "Infrastructure files modified — skipping auto-merge:"
             echo "$INFRA_FILES"
