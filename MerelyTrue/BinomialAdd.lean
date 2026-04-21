@@ -8,6 +8,8 @@ import Mathlib
 
 open Real PMF BigOperators ENNReal NNReal Finset
 
+/-- The sum of two independent binomial random variables with the same success
+probability is binomial with the combined number of trials. -/
 lemma PMF.binomial_add_binomial (p : NNReal) (hp : p ≤ 1) (m₁ m₂ : ℕ) :
     (do
       let k ← PMF.binomial p hp (m₁ + m₂)
