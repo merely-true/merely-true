@@ -89,6 +89,15 @@ jobs:
             echo "has_lean_files=true" >> $GITHUB_OUTPUT
           fi
 
+      - name: Remove stale project build artifacts
+        if: steps.is_bot.outputs.is_bot == 'true' || steps.check_lean_files.outputs.has_lean_files == 'true'
+        run: |
+          # The restored Lake cache can contain old project .olean files for modules
+          # that no longer exist in the current checkout. leanchecker scans every
+          # project olean on LEAN_PATH, so clear the project's build outputs and let
+          # the current checkout rebuild only the live modules.
+          rm -rf .lake/build/lib/lean/MerelyTrue .lake/build/ir/MerelyTrue
+
       - name: Build with Lean
         if: steps.is_bot.outputs.is_bot == 'true' || steps.check_lean_files.outputs.has_lean_files == 'true'
         # Pin post-lean-action#156 until the next tagged release; v1/v1.4.0 still
