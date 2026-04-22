@@ -86,6 +86,7 @@ lemma UniformSchwartzDecay.integrable_poly_mul {f : Torus3 → (Fin 3 → ℝ) �
   have hb := hbound x v
   simp [iteratedFDeriv_zero_eq_comp] at hb
   have hv_pos : (0 : ℝ) < (1 + ‖v‖) ^ 4 := by positivity
+  simp only [Pi.mul_apply, Pi.add_apply]
   rw [Real.norm_eq_abs, abs_mul, abs_of_nonneg (by positivity)]
   rw [le_div_iff₀ hv_pos]
   calc (1 + ‖v‖) ^ M * |f x v| * (1 + ‖v‖) ^ 4

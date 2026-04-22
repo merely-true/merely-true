@@ -1,0 +1,48 @@
+name: Infrastructure gate
+
+on:
+  pull_request_target:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: read
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require admin for infrastructure changes
+        env:
+          GH_TOKEN: ${{ github.token }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          if [ "$AUTHOR" = "github-actions[bot]" ]; then
+            echo "✓ PR from automated bot — skipping gate"
+            exit 0
+          fi
+
+          CHANGED_FILES=$(gh api --paginate "repos/$REPO/pulls/$PR/files" --jq '.[].filename')
+          INFRA_FILES=$(echo "$CHANGED_FILES" | grep -E '^\.github/|^lakefile\.toml$|^lake-manifest\.json$|^lean-toolchain$|^\.gitignore$|^README\.md$' || true)
+
+          if [ -z "$INFRA_FILES" ]; then
+            echo "✓ No infrastructure files modified"
+            exit 0
+          fi
+
+          echo "Infrastructure files modified:"
+          echo "$INFRA_FILES"
+          echo ""
+          echo "Checking if $AUTHOR has admin permissions..."
+
+          PERMISSION=$(gh api "repos/$REPO/collaborators/$AUTHOR/permission" --jq '.permission')
+
+          if [ "$PERMISSION" = "admin" ]; then
+            echo "✓ $AUTHOR has admin permissions"
+          else
+            echo "✗ $AUTHOR does not have admin permissions (has: $PERMISSION)"
+            echo "Only repository admins can modify infrastructure files."
+            exit 1
+          fi

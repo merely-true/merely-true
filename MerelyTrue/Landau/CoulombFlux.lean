@@ -56,10 +56,10 @@ lemma landau_flux_integrable_coulomb
                   |> le_trans <| mul_le_of_le_one_right (norm_nonneg _) <|
                   by simp [Pi.norm_single]
               generalize_proofs at *
-              erw [iteratedFDeriv_succ_eq_comp_left]; norm_num [fderiv_deriv]
+              erw [iteratedFDeriv_succ_eq_comp_left]; norm_num [fderiv_apply_one_eq_deriv]
               erw [iteratedFDeriv_zero_eq_comp]
               erw [fderiv_comp] <;> norm_num [hf_smooth.contDiffAt.differentiableAt]
-              · erw [LinearIsometryEquiv.fderiv]; norm_num [fderiv_deriv]
+              · erw [LinearIsometryEquiv.fderiv]; norm_num [fderiv_apply_one_eq_deriv]
                 erw [ContinuousLinearMap.norm_def]; norm_num [ContinuousLinearMap.opNorm]
                 ring_nf; exact this
               · exact (LinearIsometryEquiv.differentiable _) _
@@ -168,11 +168,15 @@ lemma flux_component_aestronglyMeasurable
       apply Continuous.measurable
       apply Continuous.sub
       · by_cases h : i = j
-        · simp only [h, ↓reduceIte, normSq, dotProduct, mul_one]
-          exact continuous_finset_sum _ fun k _ =>
-            ((continuous_apply k).comp (continuous_fst.sub continuous_snd)).mul
-            ((continuous_apply k).comp (continuous_fst.sub continuous_snd))
-        · simp [h]; exact continuous_const
+        · simp only [h, ↓reduceIte, normSq, dotProduct]
+          have : Continuous fun p : (Fin 3 → ℝ) × (Fin 3 → ℝ) =>
+              (∑ k : Fin 3, (p.1 - p.2) k * (p.1 - p.2) k) * 1 := by
+            refine (continuous_finset_sum Finset.univ fun k _ => ?_).mul continuous_const
+            exact ((continuous_apply k).comp (continuous_fst.sub continuous_snd)).mul
+              ((continuous_apply k).comp (continuous_fst.sub continuous_snd))
+          convert this using 1
+        · simp only [h, ↓reduceIte]
+          exact (continuous_const (y := (0:ℝ))).congr fun _ => (mul_zero _).symm
       · exact ((continuous_apply i).comp (continuous_fst.sub continuous_snd)).mul
               ((continuous_apply j).comp (continuous_fst.sub continuous_snd))
   · -- The vector part is continuous

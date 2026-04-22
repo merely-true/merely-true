@@ -203,7 +203,7 @@ theorem clairaut_fderiv {n : ℕ} (g : (Fin n → ℝ) → ℝ) (x : Fin n → �
     fderiv ℝ (fun y => fderiv ℝ g y (Pi.single i 1)) x (Pi.single j 1) := by
   have hsymm := (hg.contDiffAt (x := x)).isSymmSndFDerivAt (by norm_num [minSmoothness])
   have hd : DifferentiableAt ℝ (fderiv ℝ g) x :=
-    ((hg.contDiffAt (x := x)).fderiv_right (le_refl _)).differentiableAt le_rfl
+    ((hg.contDiffAt (x := x)).fderiv_right (le_refl _)).differentiableAt one_ne_zero
   have key : ∀ v w, fderiv ℝ (fun y => fderiv ℝ g y v) x w = fderiv ℝ (fderiv ℝ g) x w v := by
     intro v w
     have h1 := fderiv_clm_apply hd (differentiableAt_const v)
@@ -245,8 +245,8 @@ theorem torus_hGradAdd' (f g : Torus3 → ℝ)
     ext y; simp [periodicLift]
   rw [hlift]
   rw [show (fun y => periodicLift f y + periodicLift g y) = (periodicLift f + periodicLift g)
-    from rfl, fderiv_add (hf.differentiable le_rfl).differentiableAt
-      (hg.differentiable le_rfl).differentiableAt]
+    from rfl, fderiv_add (hf.differentiable one_ne_zero).differentiableAt
+      (hg.differentiable one_ne_zero).differentiableAt]
   rfl
 
 -- ============================================================================
@@ -306,6 +306,6 @@ lemma continuous_torusGradX (f : Torus3 → ℝ) (i : Fin 3)
       show (fun x => torusGradX f x i) ∘ torusMk =
         fun y => fderiv ℝ (periodicLift f) y (Pi.single i 1)
         from funext (periodicLift_torusGradX f i)]
-  exact (hf.continuous_fderiv le_rfl).clm_apply continuous_const
+  exact (hf.continuous_fderiv one_ne_zero).clm_apply continuous_const
 
 end

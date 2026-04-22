@@ -29,7 +29,7 @@ lemma fderiv_equilibriumMaxwellian (ρ T : ℝ) (hT : 0 < T) (v : Fin 3 → ℝ)
   have hq_smooth : ContDiff ℝ ⊤ (fun w : Fin 3 → ℝ => -(normSq w) / (2 * T)) :=
     contDiff_negNormSq_div T
   have hq_diff : Differentiable ℝ (fun w : Fin 3 → ℝ => -(normSq w) / (2 * T)) :=
-    hq_smooth.differentiable le_top
+    hq_smooth.differentiable (by decide)
   -- eM = pf • (exp ∘ q)
   have heM_eq : equilibriumMaxwellian ρ T =
       (ρ / (2 * π * T) ^ ((3:ℝ)/2)) •
@@ -162,7 +162,7 @@ private lemma poly_mul_gaussian_le (M : ℕ) (a : ℝ) (ha : 0 < a) :
       _ ≤ 2 ^ M * (1 + M.factorial / a ^ M) := by
           gcongr
           linarith [div_nonneg (Nat.cast_nonneg M.factorial) (pow_nonneg ha.le M)]
-  · push_neg at h
+  · push Not at h
     have hu1 : 1 ≤ u := h.le
     have h_sq : u ≤ u ^ 2 := le_self_pow₀ hu1 two_ne_zero
     calc (1 + u) ^ M * Real.exp (-a * u ^ 2)

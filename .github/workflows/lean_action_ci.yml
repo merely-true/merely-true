@@ -51,46 +51,10 @@ jobs:
             exit 1
           fi
 
-      - name: Check infrastructure modifications
-        if: steps.is_bot.outputs.is_bot != 'true'
-        id: check_infra
-        continue-on-error: true
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          AUTHOR="${{ github.event.pull_request.user.login }}"
-          REPO="${{ github.repository }}"
-          BASE="${{ github.event.pull_request.base.sha }}"
-          HEAD="${{ github.event.pull_request.head.sha }}"
-
-          # Get list of changed files
-          CHANGED_FILES=$(git diff --name-only $BASE...$HEAD)
-
-          # Check for infrastructure files
-          INFRA_FILES=$(echo "$CHANGED_FILES" | grep -E '^\.github/|^lakefile\.toml$|^lake-manifest\.json$|^lean-toolchain$|^\.gitignore$|^README\.md$' || true)
-
-          if [ -n "$INFRA_FILES" ]; then
-            echo "Infrastructure files modified:"
-            echo "$INFRA_FILES"
-            echo ""
-            echo "Checking if $AUTHOR has admin permissions..."
-
-            PERMISSION=$(curl -s \
-              -H "Authorization: Bearer $GH_TOKEN" \
-              -H "Accept: application/vnd.github+json" \
-              "https://api.github.com/repos/$REPO/collaborators/$AUTHOR/permission" \
-              | jq -r '.permission')
-
-            if [ "$PERMISSION" = "admin" ]; then
-              echo "✓ $AUTHOR has admin permissions"
-            else
-              echo "✗ $AUTHOR does not have admin permissions (has: $PERMISSION)"
-              echo "Only repository admins can modify CI or infrastructure files."
-              exit 1
-            fi
-          else
-            echo "✓ No infrastructure files modified"
-          fi
+      # The infrastructure-file admin gate lives in infra_gate.yml
+      # (pull_request_target) because the pull_request token for fork PRs is
+      # read-only, which makes /collaborators/{user}/permission return clamped
+      # data and falsely reject admins.
 
       - name: Validate only Lean files are modified
         if: steps.is_bot.outputs.is_bot != 'true'
@@ -125,16 +89,49 @@ jobs:
             echo "has_lean_files=true" >> $GITHUB_OUTPUT
           fi
 
+      - name: Remove stale project build artifacts
+        if: steps.is_bot.outputs.is_bot == 'true' || steps.check_lean_files.outputs.has_lean_files == 'true'
+        run: |
+          # The restored Lake cache can contain old project .olean files for modules
+          # that no longer exist in the current checkout. leanchecker scans every
+          # project olean on LEAN_PATH, so clear the project's build outputs and let
+          # the current checkout rebuild only the live modules.
+          rm -rf .lake/build/lib/lean/MerelyTrue .lake/build/ir/MerelyTrue
+
       - name: Build with Lean
         if: steps.is_bot.outputs.is_bot == 'true' || steps.check_lean_files.outputs.has_lean_files == 'true'
-        uses: leanprover/lean-action@v1
+        # Pin post-lean-action#156 until the next tagged release; v1/v1.4.0 still
+        # use the legacy external lean4checker path for Lean v4.29.0.
+        uses: leanprover/lean-action@844b3307d78316465f2cf6dfa05cc97cdeefdc96
         with:
           build-args: "--wfail"
-          lean4checker: true
 
-      - name: Enforce infrastructure modification policy
-        if: always() && steps.is_bot.outputs.is_bot != 'true' && steps.check_infra.outcome == 'failure'
+      - name: Run leanchecker sequentially
+        if: steps.is_bot.outputs.is_bot == 'true' || steps.check_lean_files.outputs.has_lean_files == 'true'
         run: |
-          echo "Infrastructure modification check failed earlier."
-          echo "Only repository admins can modify CI or infrastructure files."
-          exit 1
+          # `leanchecker` treats a target module as a prefix in non-`--fresh` mode.
+          # Running it on `MerelyTrue` fans out across every project module in
+          # parallel, which is too heavy for GitHub's hosted runners. Instead, run
+          # it sequentially on leaf source modules only. We skip the two
+          # import-only aggregator files:
+          #   - MerelyTrue.lean -> imports MerelyTrue.BinomialAdd
+          #   - MerelyTrue.Landau.lean -> imports the Landau leaf modules
+          #
+          # Future cleanup: once https://github.com/leanprover/lean-action/pull/162
+          # (`leanchecker-args` input) lands and a new lean-action release is
+          # tagged, AND once `leanchecker` itself gains a way to serialize its
+          # internal `IO.asTask` fan-out (e.g. a `--jobs 1` flag), this whole
+          # step can be replaced with the lean-action invocation above plus
+          #     leanchecker: true
+          #     leanchecker-args: "--jobs 1"   # or whatever flag lands
+          # As an intermediate workaround that does not need either upstream
+          # change, setting `env: LEAN_NUM_THREADS: "1"` on the lean-action
+          # step also caps the fan-out (via Lean's task scheduler) and lets
+          # us go back to `leanchecker: true`.
+          find MerelyTrue -name '*.lean' ! -path 'MerelyTrue/Landau.lean' \
+            | LC_ALL=C sort \
+            | sed 's#/#.#g; s#\.lean$##' \
+            | while IFS= read -r module; do
+                echo "Checking $module"
+                lake env leanchecker "$module"
+              done

@@ -319,7 +319,7 @@ lemma coulomb_flux_component_bound
           Real.norm_eq_abs]; rfl)
   -- Cg ≥ 0 from the gradient bound (|∂_j g| ≤ Cg * poly * g, all nonneg)
   have hCg_nn : 0 ≤ Cg := by
-    by_contra h_neg; push_neg at h_neg
+    by_contra h_neg; push Not at h_neg
     have : Cg * (1 + ‖(0 : Fin 3 → ℝ)‖) ^ Kg * g 0 < 0 :=
       mul_neg_of_neg_of_pos (mul_neg_of_neg_of_pos h_neg (by positivity)) (hg_pos 0)
     linarith [hGrad 0 0, abs_nonneg (fderiv ℝ g 0 (Pi.single 0 1))]

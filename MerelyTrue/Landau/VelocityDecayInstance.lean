@@ -36,9 +36,12 @@ lemma lorentz_component_bound (E₀ B₀ : Fin 3 → ℝ) :
                  mul_le_mul_of_nonneg_right (norm_le_pi_norm v 1) (abs_nonneg _),
                by simpa [ abs_mul ] using
                  mul_le_mul_of_nonneg_right (norm_le_pi_norm v 2) (abs_nonneg _) ⟩
+    have heq : E₀ 0 + v 1 * B₀ 2 - v 2 * B₀ 1 = E₀ 0 + (v 1 * B₀ 2 - v 2 * B₀ 1) := by ring
+    rw [heq]
+    obtain ⟨hE, hvB2, hvB1⟩ := h_triangle2
     nlinarith [ abs_nonneg (E₀ 0), abs_nonneg (v 1 * B₀ 2), abs_nonneg (v 2 * B₀ 1),
                 abs_nonneg (B₀ 0), abs_nonneg (B₀ 1), abs_nonneg (B₀ 2),
-                norm_nonneg E₀, norm_nonneg v ]
+                norm_nonneg E₀, norm_nonneg v, h_triangle, hE, hvB2, hvB1 ]
   · have h_triangle :
         |E₀ 1| ≤ ‖E₀‖ ∧ |v 2 * B₀ 0| ≤ ‖v‖ * |B₀ 0| ∧ |v 0 * B₀ 2| ≤ ‖v‖ * |B₀ 2| := by
       exact ⟨ by simpa using norm_le_pi_norm E₀ 1,
@@ -60,6 +63,8 @@ lemma lorentz_component_bound (E₀ B₀ : Fin 3 → ℝ) :
         cases abs_cases (E₀ 2) <;>
         cases abs_cases (v 0 * B₀ 1) <;>
         cases abs_cases (v 1 * B₀ 0) <;> linarith
+    have heq : E₀ 2 + v 0 * B₀ 1 - v 1 * B₀ 0 = E₀ 2 + (v 0 * B₀ 1 - v 1 * B₀ 0) := by ring
+    rw [heq]
     norm_num [ abs_mul ] at *
     nlinarith! [ abs_nonneg (E₀ 2), abs_nonneg (v 0), abs_nonneg (v 1),
                  abs_nonneg (B₀ 0), abs_nonneg (B₀ 1), abs_nonneg (B₀ 2),

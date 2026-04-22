@@ -56,7 +56,7 @@ private lemma inv_norm_bounded_integrable
           rw [Real.norm_eq_abs, abs_mul, abs_of_nonneg (inv_nonneg.mpr (norm_nonneg _))]
           have hw_far : 1 ≤ ‖v - w‖ := by
             rw [Set.mem_diff] at hw
-            by_contra h_lt; push_neg at h_lt
+            by_contra h_lt; push Not at h_lt
             exact hw.2 (Metric.mem_closedBall.mpr (by rw [dist_comm, dist_eq_norm]; linarith))
           calc ‖v - w‖⁻¹ * |g w| ≤ 1 * |g w| :=
                 mul_le_mul_of_nonneg_right (inv_le_one_of_one_le₀ hw_far) (abs_nonneg _)
@@ -180,7 +180,7 @@ private lemma coulomb_entry_conv_hasFDerivAt_aux
   refine hasFDerivAt_integral_of_dominated_of_fderiv_le
     (F' := fun v u => landauMatrix coulombKernel u i j • fderiv ℝ g (v - u))
     (bound := fun u => ‖u‖⁻¹ * (D / (1 + ‖v₀ - u‖) ^ 4))
-    (ε := 1) one_pos
+    (s := Metric.ball v₀ 1) (Metric.ball_mem_nhds v₀ one_pos)
     ?_ ?_ ?_ ?_ ?_ ?_
   · -- F measurable
     apply Filter.Eventually.of_forall
@@ -234,7 +234,7 @@ private lemma coulomb_entry_conv_hasFDerivAt_aux
       inverse_poly_integrable D
     have h_bound_meas : AEStronglyMeasurable (fun w : Fin 3 → ℝ => D / (1 + ‖w‖) ^ 4) volume :=
       ((continuous_const.div ((continuous_const.add continuous_norm).pow 4)
-        (fun w => by positivity)).measurable).aestronglyMeasurable
+        (fun w => (pow_pos (by linarith [norm_nonneg w] : (0:ℝ) < 1 + ‖w‖) 4).ne')).measurable).aestronglyMeasurable
     have h_w_int := inv_norm_bounded_integrable h_bound_fun h_bound_int h_bound_meas v₀
     -- h_w_int : Integrable (fun w => ‖v₀ - w‖⁻¹ * (D / (1+‖w‖)^4))
     -- Substitute u = v₀ - w to get the u-coordinate form

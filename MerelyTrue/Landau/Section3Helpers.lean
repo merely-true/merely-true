@@ -38,7 +38,7 @@ lemma analysis_fluxFactor
       (1 / f v) • VML.vGrad f v := by
     intro v
     ext i
-    by_cases H : DifferentiableAt ℝ f v <;> simp_all [VML.vGrad, fderiv_deriv]
+    by_cases H : DifferentiableAt ℝ f v <;> simp_all [VML.vGrad, fderiv_apply_one_eq_deriv]
     ring_nf
     · erw [ fderiv_comp ] <;> norm_num [ H, ne_of_gt (hf_pos v) ]; ring
     · rw [ fderiv_zero_of_not_differentiableAt ]
@@ -103,7 +103,7 @@ lemma analysis_nonneg_dbl_zero
       · exact hint_inner v
     intro v w
     by_contra h_nonzero
-    push_neg at h_nonzero
+    push Not at h_nonzero
     obtain ⟨U, hU_open, hU_v, hU_nonzero⟩ :
         ∃ U : Set (Fin 3 → ℝ),
         IsOpen U ∧ v ∈ U ∧ ∀ u ∈ U, g u w ≠ 0 := by
@@ -361,9 +361,9 @@ lemma parallel_curl_free_affine (g : (Fin 3 → ℝ) → (Fin 3 → ℝ))
         ring_nf
         · apply_rules [ContDiffAt.isSymmSndFDerivAt]
           exacts [hg_smooth.contDiffAt, by norm_num [minSmoothness]]
-        · exact h_diff_fderiv.differentiable le_rfl v
+        · exact h_diff_fderiv.differentiable one_ne_zero v
         · exact differentiableAt_const _
-        · exact h_diff_fderiv.differentiable le_rfl v
+        · exact h_diff_fderiv.differentiable one_ne_zero v
         · exact differentiableAt_const _
       have h_second_deriv : ∀ v : Fin 3 → ℝ,
           ∀ i j k : Fin 3,
@@ -377,7 +377,7 @@ lemma parallel_curl_free_affine (g : (Fin 3 → ℝ) → (Fin 3 → ℝ))
             (fun v => (fderiv ℝ g v) (Pi.single j 1) i') v :=
           fun i' => DifferentiableAt.comp v
             (differentiableAt_pi.1
-              ((h_diff_fderiv.clm_apply contDiff_const).contDiffAt.differentiableAt le_rfl) i')
+              ((h_diff_fderiv.clm_apply contDiff_const).contDiffAt.differentiableAt one_ne_zero) i')
             differentiableAt_id
         have h_pi_comp : (fderiv ℝ (fun v => (fderiv ℝ g v) (Pi.single j 1)) v)
             (Pi.single k 1) i =
@@ -412,7 +412,7 @@ lemma parallel_curl_free_affine (g : (Fin 3 → ℝ) → (Fin 3 → ℝ))
       have h_diff_c : Differentiable ℝ c := by
         have : ContDiff ℝ 1 (fun v => (fderiv ℝ g v) (Pi.single 0 1) 0) :=
           (contDiff_apply ℝ ℝ 0).comp (h_diff_fderiv.clm_apply contDiff_const)
-        convert this.differentiable le_rfl using 1
+        convert this.differentiable one_ne_zero using 1
         funext v; simp [hc, smul_eq_mul]
       intro v w; exact is_const_of_fderiv_eq_zero h_diff_c h_const_c v w
     use c 0
@@ -464,7 +464,7 @@ lemma affine_gradient_antiderivative (h : (Fin 3 → ℝ) → ℝ) (b : Fin 3 �
             |> HasFDerivAt.comp _
             <| HasFDerivAt.smul (hasFDerivAt_id t)
             <| hasFDerivAt_const _ _)) using 1
-      norm_num [fderiv_deriv, dotProduct]
+      norm_num [fderiv_apply_one_eq_deriv, dotProduct]
       set L := fderiv ℝ h (t • v)
       have hv_decomp : v = ∑ i, v i • (Pi.single i (1 : ℝ) : Fin 3 → ℝ) := by
         ext i; simp [Pi.single_apply, Finset.sum_apply, smul_eq_mul]
@@ -487,7 +487,17 @@ lemma affine_gradient_antiderivative (h : (Fin 3 → ℝ) → ℝ) (b : Fin 3 �
       hint
     simp at this; linarith
   simp_all [VML.normSq]
-  norm_num [mul_assoc, mul_comm, mul_left_comm, Fin.sum_univ_three, dotProduct] at *; linarith!
+  have hI1 : IntervalIntegrable (fun _ : ℝ => b ⬝ᵥ v) MeasureTheory.volume 0 1 :=
+    intervalIntegrable_const
+  have hI2 : IntervalIntegrable (fun t : ℝ => c₀ * (t * (2 * v) ⬝ᵥ v)) MeasureTheory.volume 0 1 :=
+    (continuous_const.mul (continuous_id.mul continuous_const)).intervalIntegrable 0 1
+  rw [intervalIntegral.integral_add hI1 hI2,
+      intervalIntegral.integral_const,
+      intervalIntegral.integral_const_mul,
+      intervalIntegral.integral_mul_const,
+      integral_id] at this
+  norm_num [mul_assoc, mul_comm, mul_left_comm, Fin.sum_univ_three, dotProduct] at *
+  linarith!
 
 
 end VML

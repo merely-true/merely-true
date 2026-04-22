@@ -255,7 +255,8 @@ lemma gaussian_first_moment (a : ℝ) (b : Fin 3 → ℝ) (c : ℝ) (hc : c < 0)
             then v * Real.exp (a + b j * v + c * v^2)
             else Real.exp (b j * v + c * v^2))) := by
         erw [← MeasureTheory.integral_fintype_prod_eq_prod]; rfl
-      simp_all [ Finset.prod_eq_mul_prod_diff_singleton (Finset.mem_univ i) ]
+      simp_all [Finset.prod_eq_mul_prod_diff_singleton (s := Finset.univ) i _
+        (fun h => absurd (Finset.mem_univ i) h)]
       exact Or.inl (by rw [ Finset.sdiff_singleton_eq_erase ]
                        exact Finset.prod_congr rfl fun x hx => by simp_all)
     have h_gauss_integral_component2 :
