@@ -116,6 +116,18 @@ jobs:
           # import-only aggregator files:
           #   - MerelyTrue.lean -> imports MerelyTrue.BinomialAdd
           #   - MerelyTrue.Landau.lean -> imports the Landau leaf modules
+          #
+          # Future cleanup: once https://github.com/leanprover/lean-action/pull/162
+          # (`leanchecker-args` input) lands and a new lean-action release is
+          # tagged, AND once `leanchecker` itself gains a way to serialize its
+          # internal `IO.asTask` fan-out (e.g. a `--jobs 1` flag), this whole
+          # step can be replaced with the lean-action invocation above plus
+          #     leanchecker: true
+          #     leanchecker-args: "--jobs 1"   # or whatever flag lands
+          # As an intermediate workaround that does not need either upstream
+          # change, setting `env: LEAN_NUM_THREADS: "1"` on the lean-action
+          # step also caps the fan-out (via Lean's task scheduler) and lets
+          # us go back to `leanchecker: true`.
           find MerelyTrue -name '*.lean' ! -path 'MerelyTrue/Landau.lean' \
             | LC_ALL=C sort \
             | sed 's#/#.#g; s#\.lean$##' \
