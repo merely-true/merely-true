@@ -105,4 +105,21 @@ jobs:
         uses: leanprover/lean-action@844b3307d78316465f2cf6dfa05cc97cdeefdc96
         with:
           build-args: "--wfail"
-          leanchecker: true
+
+      - name: Run leanchecker sequentially
+        if: steps.is_bot.outputs.is_bot == 'true' || steps.check_lean_files.outputs.has_lean_files == 'true'
+        run: |
+          # `leanchecker` treats a target module as a prefix in non-`--fresh` mode.
+          # Running it on `MerelyTrue` fans out across every project module in
+          # parallel, which is too heavy for GitHub's hosted runners. Instead, run
+          # it sequentially on leaf source modules only. We skip the two
+          # import-only aggregator files:
+          #   - MerelyTrue.lean -> imports MerelyTrue.BinomialAdd
+          #   - MerelyTrue.Landau.lean -> imports the Landau leaf modules
+          find MerelyTrue -name '*.lean' ! -path 'MerelyTrue/Landau.lean' \
+            | LC_ALL=C sort \
+            | sed 's#/#.#g; s#\.lean$##' \
+            | while IFS= read -r module; do
+                echo "Checking $module"
+                lake env leanchecker "$module"
+              done
