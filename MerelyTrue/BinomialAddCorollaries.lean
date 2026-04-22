@@ -71,4 +71,5 @@ lemma PMF.binomial_add_binomial_assoc (p : NNReal) (hp : p ≤ 1) (m₁ m₂ m�
         (do
           let n ← PMF.binomial p hp (m₁ + m₂ + m₃)
           return (n : ℕ)) := by
-            rw [(PMF.binomial_add_binomial p hp (m₁ + m₂) m₃).symm]
+            simpa [Nat.add_assoc] using
+              (PMF.binomial_add_binomial p hp (m₁ + m₂) m₃).symm

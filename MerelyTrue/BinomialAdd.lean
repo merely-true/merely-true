@@ -123,13 +123,16 @@ lemma PMF.binomial_add_binomial (p : NNReal) (hp : p ≤ 1) (m₁ m₂ : ℕ) :
     case left_inv =>
       intro x hx
       ext
-      simp
+      rfl
     case right_inv =>
       intro ⟨i, j⟩ hij
       rw [Finset.mem_filter] at hij
-      rw [mem_antidiagonal] at hij
-      simp only [Prod.mk.injEq, true_and]
-      omega
+      obtain ⟨hij_mem, hi_le, hj_le⟩ := hij
+      rw [mem_antidiagonal] at hij_mem
+      ext
+      · rfl
+      · change n - i = j
+        omega
     case h =>
       intro x hx
       rw [Finset.mem_filter] at hx
@@ -145,14 +148,35 @@ lemma PMF.binomial_add_binomial (p : NNReal) (hp : p ≤ 1) (m₁ m₂ : ℕ) :
         congr 1
         omega
       ring_nf
-      calc (p : ENNReal) ^ (x : ℕ) * (p : ENNReal) ^ (n - (x : ℕ)) *
-           (1 - (p : ENNReal)) ^ (m₁ - (x : ℕ)) * (1 - (p : ENNReal)) ^ (m₂ - (n - (x : ℕ))) *
-           ↑(m₁.choose (x : ℕ)) * ↑(m₂.choose (n - (x : ℕ)))
-        _ = (p : ENNReal) ^ n * ((1 - (p : ENNReal)) ^ (m₁ - (x : ℕ)) *
-            (1 - (p : ENNReal)) ^ (m₂ - (n - (x : ℕ)))) * ↑(m₁.choose (x : ℕ)) *
-            ↑(m₂.choose (n - (x : ℕ))) := by rw [pow_p]; ring
-        _ = (p : ENNReal) ^ n * (1 - (p : ENNReal)) ^ (m₁ + m₂ - n) *
-            ↑(m₁.choose (x : ℕ)) * ↑(m₂.choose (n - (x : ℕ))) := by rw [pow_q]
+      have hprod :
+          (p : ENNReal) ^ (x : ℕ) * (p : ENNReal) ^ (n - (x : ℕ)) *
+              (1 - (p : ENNReal)) ^ (m₁ - (x : ℕ)) * (1 - (p : ENNReal)) ^ (m₂ - (n - (x : ℕ))) *
+              ↑(m₁.choose (x : ℕ)) * ↑(m₂.choose (n - (x : ℕ))) =
+            (p : ENNReal) ^ n * (1 - (p : ENNReal)) ^ (m₁ + m₂ - n) *
+              ↑(m₁.choose ((fun x _ => (↑x, n - ↑x)) x hx).1 *
+                m₂.choose ((fun x _ => (↑x, n - ↑x)) x hx).2) := by
+        calc (p : ENNReal) ^ (x : ℕ) * (p : ENNReal) ^ (n - (x : ℕ)) *
+             (1 - (p : ENNReal)) ^ (m₁ - (x : ℕ)) * (1 - (p : ENNReal)) ^ (m₂ - (n - (x : ℕ))) *
+             ↑(m₁.choose (x : ℕ)) * ↑(m₂.choose (n - (x : ℕ)))
+          _ = (p : ENNReal) ^ n * ((1 - (p : ENNReal)) ^ (m₁ - (x : ℕ)) *
+              (1 - (p : ENNReal)) ^ (m₂ - (n - (x : ℕ))) *
+              (↑(m₁.choose (x : ℕ)) * ↑(m₂.choose (n - (x : ℕ))))) := by
+                rw [pow_p]
+                ring
+          _ = (p : ENNReal) ^ n * ((1 - (p : ENNReal)) ^ (m₁ + m₂ - n) *
+              (↑(m₁.choose (x : ℕ)) * ↑(m₂.choose (n - (x : ℕ))))) := by
+                rw [pow_q]
+          _ = (p : ENNReal) ^ n * (1 - (p : ENNReal)) ^ (m₁ + m₂ - n) *
+              (↑(m₁.choose (x : ℕ)) * ↑(m₂.choose (n - (x : ℕ)))) := by
+                ring
+          _ = (p : ENNReal) ^ n * (1 - (p : ENNReal)) ^ (m₁ + m₂ - n) *
+              ↑(m₁.choose (x : ℕ) * m₂.choose (n - (x : ℕ))) := by
+                rw [Nat.cast_mul]
+          _ = (p : ENNReal) ^ n * (1 - (p : ENNReal)) ^ (m₁ + m₂ - n) *
+              ↑(m₁.choose ((fun x _ => (↑x, n - ↑x)) x hx).1 *
+                m₂.choose ((fun x _ => (↑x, n - ↑x)) x hx).2) := by
+                rfl
+      simpa [Nat.cast_mul, mul_assoc] using hprod
   · push_neg at hn
     have lhs_zero : (∑ x : Fin (m₁ + m₂ + 1), if n = ↑x then (binomial p hp (m₁ + m₂)) x else 0) = 0 := by
       apply Finset.sum_eq_zero
@@ -175,4 +199,4 @@ lemma PMF.binomial_add_binomial (p : NNReal) (hp : p ≤ 1) (m₁ m₂ : ℕ) :
         have hy : (y : ℕ) ≤ m₂ := Fin.is_le y
         omega
       simp [inner_zero]
-    rw [lhs_zero, rhs_zero]
+    simp [lhs_zero, rhs_zero]
